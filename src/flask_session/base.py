@@ -148,6 +148,27 @@ class MsgSpecSerializer(Serializer):
         raise pickle.UnpicklingError("Failed to deserialize session data")
 
 
+class PickleSerializer(Serializer):
+    def __init__(self, app: Flask):
+        self.app: Flask = app
+        self.encoder = pickle
+        self.decoder = pickle
+
+    def encode(self, session: ServerSideSession) -> bytes:
+        try:
+            return self.encoder.dumps(dict(session))
+        except Exception as e:
+            self.app.logger.error(f"Failed to serialize session data: {e}")
+            raise
+
+    def decode(self, serialized_data: bytes) -> dict:
+        try:
+            return self.decoder.loads(serialized_data)
+        except pickle.UnpicklingError:
+            self.app.logger.error("Failed to unpickle session data", exc_info=True)
+            raise
+
+
 class ServerSideSessionInterface(FlaskSessionInterface, ABC):
     """Used to open a :class:`flask.sessions.ServerSideSessionInterface` instance."""
 
@@ -188,7 +209,11 @@ class ServerSideSessionInterface(FlaskSessionInterface, ABC):
                 self._register_cleanup_app_command()
 
         # Set the serialization format
-        self.serializer = MsgSpecSerializer(format=serialization_format, app=app)
+        if serialization_format == "pickle":
+            self.serializer = PickleSerializer(app=app)
+        else:
+            self.serializer = MsgSpecSerializer(format=serialization_format, app=app)
+
 
     # INTERNAL METHODS
 
