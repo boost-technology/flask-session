@@ -154,14 +154,14 @@ class PickleSerializer(Serializer):
         self.encoder = pickle
         self.decoder = pickle
 
-    def encode(self, session: ServerSideSession) -> bytes:
+    def dumps(self, data: dict) -> bytes:
         try:
-            return self.encoder.dumps(dict(session))
+            return self.encoder.dumps(dict(data))
         except Exception as e:
             self.app.logger.error(f"Failed to serialize session data: {e}")
             raise
 
-    def decode(self, serialized_data: bytes) -> dict:
+    def loads(self, serialized_data: bytes) -> dict:
         try:
             return self.decoder.loads(serialized_data)
         except pickle.UnpicklingError:
